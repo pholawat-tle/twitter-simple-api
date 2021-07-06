@@ -1,7 +1,29 @@
 package main
 
-import "fmt"
+import (
+	log "github.com/sirupsen/logrus"
+)
+
+type App struct {
+	Name    string
+	Version string
+}
+
+func NewApp(name string, version string) *App {
+	return &App{Name: name, Version: version}
+}
+
+func (app *App) Run() error {
+	log.Info("Starting the application")
+
+	return nil
+}
 
 func main() {
-	fmt.Println("Twitter Clone")
+	app := NewApp("Twitter Clone", "1.0.0")
+
+	if err := app.Run(); err != nil {
+		log.Error(err)
+		log.Fatal("The application can't be started!")
+	}
 }
