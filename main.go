@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	transportHTTP "twitter/internal/transport/http"
+	"twitter/internal/tweet"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -18,7 +19,10 @@ func NewApp(name string, version string) *App {
 
 func (app *App) Run() error {
 	log.Info("Starting the application")
-	h := transportHTTP.NewHandler()
+
+	tweetService := tweet.NewService()
+
+	h := transportHTTP.NewHandler(tweetService)
 	h.SetUpRoutes()
 
 	if err := http.ListenAndServe(":8081", h.Router); err != nil {
