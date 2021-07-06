@@ -43,7 +43,9 @@ func (h *Handler) SetUpRoutes() {
 	h.Router.Use(LogMiddleware)
 
 	h.Router.HandleFunc("/api/tweet", h.GetAllTweet).Methods("GET")
+	h.Router.HandleFunc("/api/tweet", h.CreateTweet).Methods("POST")
 	h.Router.HandleFunc("/api/tweet/{id}", h.GetTweetByID).Methods("GET")
+	h.Router.HandleFunc("/api/tweet/{id}", h.DeleteTweetByID).Methods("DELETE")
 
 	h.Router.HandleFunc("/api/health", func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusOK)
@@ -59,6 +61,7 @@ func (h *Handler) GetAllTweet(rw http.ResponseWriter, r *http.Request) {
 		SendErrorResponse(rw, "Failed to retrieve all tweets", err)
 		return
 	}
+	rw.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(rw).Encode(tweets); err != nil {
 		log.Panic(err)
 	}
@@ -79,8 +82,58 @@ func (h *Handler) GetTweetByID(rw http.ResponseWriter, r *http.Request) {
 		SendErrorResponse(rw, "Failed to retrieve tweet by ID", err)
 		return
 	}
-
+	rw.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(rw).Encode(tweet); err != nil {
+		log.Panic(err)
+	}
+}
+
+func (h *Handler) CreateTweet(rw http.ResponseWriter, r *http.Request) {
+	var tweet tweet.Tweet
+	if err := json.NewDecoder(r.Body).Decode(&tweet); err != nil {
+		SendErrorResponse(rw, "Failed to parse tweet from body", err)
+		return
+	}
+
+	tweet.Likes = 0
+	tweet.Author = GetIP(r)
+
+	tweet, err := h.Service.CreateTweet(tweet)
+	if err != nil {
+		SendErrorResponse(rw, "Failed to create tweet", err)
+		return
+	}
+	rw.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(rw).Encode(Response{Message: "Your tweet has been posted"}); err != nil {
+		log.Panic(err)
+	}
+}
+
+func GetIP(r *http.Request) string {
+	forwarded := r.Header.Get("X-FORWARDED-FOR")
+	if forwarded != "" {
+		return forwarded
+	}
+	return r.RemoteAddr
+}
+
+func (h *Handler) DeleteTweetByID(rw http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	uint_id, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		SendErrorResponse(rw, "Failed to parse ID to uint", err)
+		return
+	}
+
+	err = h.Service.DeleteTweetByID(uint(uint_id))
+	if err != nil {
+		SendErrorResponse(rw, "Failed to retrieve tweet by ID", err)
+		return
+	}
+	rw.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(rw).Encode(Response{Message: "The tweet has been deleted"}); err != nil {
 		log.Panic(err)
 	}
 }
